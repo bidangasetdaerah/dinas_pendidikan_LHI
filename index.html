@@ -91,8 +91,8 @@
 
   <!-- Export Libraries -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable"></script>
 
   <script>
     const tbody = document.querySelector("tbody");
@@ -206,11 +206,11 @@
       }
     });
 
-    // Export ke Excel (dengan merge + subheader)
+    // Export ke Excel (dengan merge)
     document.getElementById("downloadExcel").addEventListener("click", () => {
       const headerRows = getTableHeadersWithMerge();
 
-      // Konversi ke AOA (Array of Arrays)
+      // Konversi ke AOA
       const aoa = headerRows.map(row =>
         row.flatMap(cell => [cell.text, ...Array(cell.colspan - 1).fill(null)])
       );
@@ -240,21 +240,51 @@
       XLSX.writeFile(wb, "data.xlsx");
     });
 
-    // Export ke PDF (pakai jspdf.umd)
+    // Export ke PDF (dengan multi-row header)
     document.getElementById("downloadPDF").addEventListener("click", () => {
       const { jsPDF } = window.jspdf;
-      const headerRows = getTableHeadersWithMerge();
-      const simpleHead = headerRows.map(row => row.map(cell => cell.text));
 
-      const doc = new jsPDF('l', 'mm', 'a4');
+      const head = [
+        [
+          { content: "Kode Barang", rowSpan: 2 },
+          { content: "Nama Barang", rowSpan: 2 },
+          { content: "NIBAR", rowSpan: 2 },
+          { content: "Nomor Register", rowSpan: 2 },
+          { content: "Spesifikasi Nama Barang", rowSpan: 2 },
+          { content: "Spesifikasi Lainnya", rowSpan: 2 },
+          { content: "Merek/Tipe", rowSpan: 2 },
+          { content: "Lokasi", rowSpan: 2 },
+          { content: "Kendaraan Dinas*)", colSpan: 3 },
+          { content: "Jumlah", rowSpan: 2 },
+          { content: "Satuan", rowSpan: 2 },
+          { content: "Harga Satuan Perolehan (Rp.)", rowSpan: 2 },
+          { content: "Nilai Perolehan (Rp.)", rowSpan: 2 },
+          { content: "Cara Perolehan", rowSpan: 2 },
+          { content: "Tanggal Perolehan", rowSpan: 2 },
+          { content: "Status Penggunaan", rowSpan: 2 },
+          { content: "Keterangan", rowSpan: 2 },
+          { content: "Nama Kecamatan", rowSpan: 2 },
+          { content: "Konfirmasi Keberadaan", rowSpan: 2 }
+        ],
+        [
+          { content: "Nomor Polisi" },
+          { content: "Nomor Rangka" },
+          { content: "Nomor BPKB" }
+        ]
+      ];
+
+      const doc = new jsPDF("l", "mm", "a4");
+      doc.setFontSize(12);
       doc.text("Data Barang", 14, 10);
+
       doc.autoTable({
-        head: simpleHead,
+        head: head,
         body: filteredData,
-        startY: 15,
+        startY: 20,
         styles: { fontSize: 7 },
-        headStyles: { fillColor: [41, 128, 185] }
+        headStyles: { fillColor: [41, 128, 185], halign: "center" }
       });
+
       doc.save("data.pdf");
     });
 
