@@ -109,6 +109,7 @@
     // CSV Google Sheets
     const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ7sTDwqB-dKMbt6-E6ux3C-_8F48Au-bJJcxqAs8ZiEcf4duOII3G2uE9Y6Psu8xIMkBnvvqMXCkzR/pub?gid=0&single=true&output=csv";
 
+    // Format rupiah
     const formatRupiah = (value) => {
       if (!isNaN(value) && value !== "") {
         return new Intl.NumberFormat("id-ID", {
@@ -188,10 +189,14 @@
         const text = await res.text();
         const rows = text.split("\n").map(r => r.split(",").map(c => c.trim()));
 
-        // Data mulai baris ke-3 (A3:U...)
-        allData = rows.slice(2).map(r => r.slice(0, 20));
-        filteredData = [...allData];
+        // Ambil data mulai A3:U (baris index 2 ke bawah, total 21 kolom)
+        allData = rows.slice(2).map(r => r.slice(0, 21));
 
+        // Buang baris header duplikat (Kode Barang, Nama Barang, Nomor Polisi, dst)
+        const headersToSkip = ["Kode Barang", "Nama Barang", "Nomor Polisi", "Nomor Rangka", "Nomor BPKB"];
+        allData = allData.filter(r => !headersToSkip.includes(r[0]) && !headersToSkip.includes(r[1]));
+
+        filteredData = [...allData];
         renderTable();
       } catch (err) {
         console.error("Gagal load sheet:", err);
