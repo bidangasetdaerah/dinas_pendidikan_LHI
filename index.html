@@ -169,17 +169,20 @@
       }
     });
 
-    // Ambil header dari HTML
-    function getTableHeaders() {
-      const headerRows = [];
+    // Ambil header dengan colspan/rowspan
+    function getTableHeadersWithMerge() {
+      const rows = [];
       document.querySelectorAll("#dataTable thead tr").forEach(tr => {
         const cells = [];
         tr.querySelectorAll("th").forEach(th => {
-          cells.push(th.innerText.replace(/\n/g, " "));
+          const text = th.innerText.replace(/\n/g, " ");
+          const colspan = parseInt(th.getAttribute("colspan") || "1");
+          const rowspan = parseInt(th.getAttribute("rowspan") || "1");
+          cells.push({ text, colspan, rowspan });
         });
-        headerRows.push(cells);
+        rows.push(cells);
       });
-      return headerRows;
+      return rows;
     }
 
     // Auto load Google Sheets
@@ -192,7 +195,7 @@
         // Ambil data mulai A3:U (baris index 2 ke bawah, total 21 kolom)
         allData = rows.slice(2).map(r => r.slice(0, 21));
 
-        // Buang baris header duplikat (Kode Barang, Nama Barang, Nomor Polisi, dst)
+        // Buang baris header duplikat
         const headersToSkip = ["Kode Barang", "Nama Barang", "Nomor Polisi", "Nomor Rangka", "Nomor BPKB"];
         allData = allData.filter(r => !headersToSkip.includes(r[0]) && !headersToSkip.includes(r[1]));
 
@@ -203,10 +206,35 @@
       }
     });
 
-    // Export ke Excel
+    // Export ke Excel (dengan merge)
     document.getElementById("downloadExcel").addEventListener("click", () => {
-      const headerRows = getTableHeaders();
-      const ws = XLSX.utils.aoa_to_sheet([...headerRows, ...filteredData]);
+      const headerRows = getTableHeadersWithMerge();
+
+      // Konversi ke AOA
+      const aoa = headerRows.map(row =>
+        row.flatMap(cell => [cell.text, ...Array(cell.colspan - 1).fill(null)])
+      );
+      aoa.push(...filteredData);
+
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+      // Tambah merge sesuai colspan/rowspan
+      ws['!merges'] = [];
+      let rowIndex = 0;
+      headerRows.forEach(row => {
+        let colIndex = 0;
+        row.forEach(cell => {
+          if (cell.colspan > 1 || cell.rowspan > 1) {
+            ws['!merges'].push({
+              s: { r: rowIndex, c: colIndex },
+              e: { r: rowIndex + cell.rowspan - 1, c: colIndex + cell.colspan - 1 }
+            });
+          }
+          colIndex += cell.colspan;
+        });
+        rowIndex++;
+      });
+
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Data");
       XLSX.writeFile(wb, "data.xlsx");
@@ -214,11 +242,13 @@
 
     // Export ke PDF
     document.getElementById("downloadPDF").addEventListener("click", () => {
-      const headerRows = getTableHeaders();
+      const headerRows = getTableHeadersWithMerge();
+      const simpleHead = headerRows.map(row => row.map(cell => cell.text));
+
       const doc = new jsPDF('l', 'mm', 'a4');
       doc.text("Data Barang", 14, 10);
       doc.autoTable({
-        head: headerRows,
+        head: simpleHead,
         body: filteredData,
         startY: 15,
         styles: { fontSize: 7 },
