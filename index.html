@@ -91,8 +91,8 @@
 
   <!-- Export Libraries -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspdf"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 
   <script>
     const tbody = document.querySelector("tbody");
@@ -206,11 +206,11 @@
       }
     });
 
-    // Export ke Excel (dengan merge)
+    // Export ke Excel (dengan merge + subheader)
     document.getElementById("downloadExcel").addEventListener("click", () => {
       const headerRows = getTableHeadersWithMerge();
 
-      // Konversi ke AOA
+      // Konversi ke AOA (Array of Arrays)
       const aoa = headerRows.map(row =>
         row.flatMap(cell => [cell.text, ...Array(cell.colspan - 1).fill(null)])
       );
@@ -240,8 +240,9 @@
       XLSX.writeFile(wb, "data.xlsx");
     });
 
-    // Export ke PDF
+    // Export ke PDF (pakai jspdf.umd)
     document.getElementById("downloadPDF").addEventListener("click", () => {
+      const { jsPDF } = window.jspdf;
       const headerRows = getTableHeadersWithMerge();
       const simpleHead = headerRows.map(row => row.map(cell => cell.text));
 
