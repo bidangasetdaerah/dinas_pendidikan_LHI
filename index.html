@@ -1,65 +1,320 @@
-// Fungsi animasi angka
-function animateNumber(element, start, end, duration) {
-  let startTime = null;
-  function step(currentTime) {
-    if (!startTime) startTime = currentTime;
-    const progress = Math.min((currentTime - startTime) / duration, 1);
-    const value = Math.floor(progress * (end - start) + start);
-    element.textContent =
-      "💰 Jumlah Total Nilai Perolehan (hasil filter): " + formatRupiah(value);
-    if (progress < 1) {
-      requestAnimationFrame(step);
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <title>LAPORAN LHI DINAS PENDIDIKAN DAN KEBUDAYAAN</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config = { darkMode: 'class' }</script>
+  <style>
+    /* sticky header sederhana */
+    #dataTable thead th { position: sticky; top: 0; z-index: 2; }
+  </style>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 min-h-screen p-6 transition-colors duration-300">
+  <div class="max-w-7xl mx-auto bg-white dark:bg-gray-800 shadow-lg rounded-xl p-6">
+    <!-- Header + Dark Mode -->
+    <div class="flex justify-between items-center mb-6">
+      <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100">📊 Data LHI Peralatan Dan Mesin</h2>
+      <button id="toggleDark" class="px-3 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 transition">🌙</button>
+    </div>
+
+    <!-- Search -->
+    <div class="flex justify-between items-center mb-3">
+      <input type="text" id="searchBox" placeholder="🔍 Cari data..."
+        class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm
+               focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm
+               bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 w-64" />
+    </div>
+
+    <!-- Tabel -->
+    <div class="overflow-x-auto border rounded-lg shadow-sm">
+      <table id="dataTable" class="min-w-[1500px] w-full text-sm text-center border-collapse">
+        <thead class="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200">
+          <tr>
+            <th colspan="2" class="border p-2">Penggolongan dan Kodefikasi Barang</th>
+            <th rowspan="2" class="border p-2">NIBAR</th>
+            <th rowspan="2" class="border p-2">Nomor Register</th>
+            <th rowspan="2" class="border p-2">Spesifikasi Nama Barang</th>
+            <th rowspan="2" class="border p-2">Spesifikasi Lainnya</th>
+            <th rowspan="2" class="border p-2">Merek/Tipe</th>
+            <th rowspan="2" class="border p-2">Lokasi</th>
+            <th colspan="3" class="border p-2">Kendaraan Dinas*)</th>
+            <th rowspan="2" class="border p-2">Jumlah</th>
+            <th rowspan="2" class="border p-2">Satuan</th>
+            <th rowspan="2" class="border p-2">Harga Satuan Perolehan<br>(Rp.)</th>
+            <th rowspan="2" class="border p-2">Nilai Perolehan<br>(Rp.)</th>
+            <th rowspan="2" class="border p-2">Cara Perolehan</th>
+            <th rowspan="2" class="border p-2">Tanggal Perolehan</th>
+            <th rowspan="2" class="border p-2">Status Penggunaan</th>
+            <th rowspan="2" class="border p-2">Keterangan</th>
+            <th rowspan="2" class="border p-2">Nama Kecamatan</th>
+            <th rowspan="2" class="border p-2">Konfirmasi Keberadaan</th>
+            <th rowspan="2" class="border p-2">Kondisi Sebelumnya</th>
+            <th rowspan="2" class="border p-2">Kondisi Saat Ini</th>
+          </tr>
+          <tr>
+            <th class="border p-2">Kode Barang</th>
+            <th class="border p-2">Nama Barang</th>
+            <th class="border p-2">Nomor Polisi</th>
+            <th class="border p-2">Nomor Rangka</th>
+            <th class="border p-2">Nomor BPKB</th>
+          </tr>
+        </thead>
+        <tbody class="text-gray-800 dark:text-gray-100 text-xs"></tbody>
+      </table>
+    </div>
+
+    <!-- Total Nilai Perolehan -->
+    <div id="totalContainer" 
+         class="mt-4 text-right text-sm font-bold 
+                bg-blue-100 dark:bg-blue-900 
+                text-blue-800 dark:text-blue-100 
+                px-4 py-2 rounded-lg shadow-md">
+    </div>
+
+    <!-- Pagination + Export -->
+    <div class="flex justify-between items-center mt-4 text-sm">
+      <span id="pageInfo" class="text-gray-600 dark:text-gray-300">Halaman 1</span>
+      <div class="flex gap-2">
+        <button id="prevPage" class="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600">◀️</button>
+        <button id="nextPage" class="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600">▶️</button>
+        <button id="downloadExcel" class="px-3 py-1 rounded bg-green-600 text-white font-semibold hover:bg-green-700">⬇️ Excel</button>
+        <button id="downloadPDF" class="px-3 py-1 rounded bg-red-600 text-white font-semibold hover:bg-red-700">⬇️ PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Export Libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
+  <script>
+    const tbody = document.querySelector("#dataTable tbody");
+    const searchBox = document.getElementById("searchBox");
+    const pageInfo = document.getElementById("pageInfo");
+    const prevPageBtn = document.getElementById("prevPage");
+    const nextPageBtn = document.getElementById("nextPage");
+
+    let allData = [];
+    let filteredData = [];
+    let currentPage = 1;
+    const rowsPerPage = 10;
+
+    // Ganti dengan link CSV Google Sheets-mu
+    const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ7sTDwqB-dKMbt6-E6ux3C-_8F48Au-bJJcxqAs8ZiEcf4duOII3G2uE9Y6Psu8xIMkBnvvqMXCkzR/pub?gid=0&single=true&output=csv";
+
+    // Format Rupiah
+    const formatRupiah = (value) => {
+      if (value === null || value === undefined) return "";
+      const n = ("" + value).replace(/[^\d.-]/g, "");
+      if (n === "" || isNaN(Number(n))) return value ?? "";
+      return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(Number(n));
+    };
+
+    // PAD row to length
+    function padRow(arr, length) {
+      const r = arr.slice();
+      while (r.length < length) r.push("");
+      return r;
     }
-  }
-  requestAnimationFrame(step);
-}
 
-function renderTable() {
-  tbody.innerHTML = "";
-  const start = (currentPage - 1) * rowsPerPage;
-  const end = start + rowsPerPage;
-  const pageData = filteredData.slice(start, end);
+    function renderTable() {
+      tbody.innerHTML = "";
+      const start = (currentPage - 1) * rowsPerPage;
+      const end = start + rowsPerPage;
+      const pageData = filteredData.slice(start, end);
 
-  pageData.forEach((row) => {
-    const tr = document.createElement("tr");
-    tr.classList.add("hover:bg-gray-50", "dark:hover:bg-gray-700");
+      pageData.forEach((row) => {
+        const tr = document.createElement("tr");
+        tr.classList.add("hover:bg-gray-50", "dark:hover:bg-gray-700");
 
-    const full = padRow(row, 23);
-    full.forEach((cell, index) => {
-      const td = document.createElement("td");
-      td.className = "border p-2 align-top";
-      if (index === 13 || index === 14) {
-        td.textContent = formatRupiah(cell);
-      } else {
-        td.textContent = cell ?? "";
+        const full = padRow(row, 23);
+        full.forEach((cell, index) => {
+          const td = document.createElement("td");
+          td.className = "border p-2 align-top";
+          if (index === 13 || index === 14) {
+            td.textContent = formatRupiah(cell);
+          } else {
+            td.textContent = cell ?? "";
+          }
+          tr.appendChild(td);
+        });
+
+        tbody.appendChild(tr);
+      });
+
+      pageInfo.textContent = `Halaman ${currentPage} dari ${Math.max(1, Math.ceil(filteredData.length / rowsPerPage))}`;
+
+      // === Hitung total kolom Nilai Perolehan (index 14) ===
+      const totalNilai = filteredData.reduce((sum, row) => {
+        const val = parseFloat((row[14] || "").toString().replace(/[^\d.-]/g, ""));
+        return sum + (isNaN(val) ? 0 : val);
+      }, 0);
+
+      document.getElementById("totalContainer").textContent =
+        "💰 Jumlah Total Nilai Perolehan (hasil filter): " + formatRupiah(totalNilai);
+    }
+
+    function applySearch() {
+      const keyword = searchBox.value.toLowerCase();
+      filteredData = allData.filter(row => row.some(cell => (cell + "").toLowerCase().includes(keyword)));
+      currentPage = 1;
+      renderTable();
+    }
+
+    searchBox.addEventListener("input", applySearch);
+    prevPageBtn.addEventListener("click", () => {
+      if (currentPage > 1) {
+        currentPage--;
+        renderTable();
       }
-      tr.appendChild(td);
+    });
+    nextPageBtn.addEventListener("click", () => {
+      if (currentPage < Math.ceil(filteredData.length / rowsPerPage)) {
+        currentPage++;
+        renderTable();
+      }
     });
 
-    tbody.appendChild(tr);
-  });
+    // Ambil header dengan info merge (colspan/rowspan)
+    function getTableHeadersWithMerge() {
+      const rows = [];
+      document.querySelectorAll("#dataTable thead tr").forEach(tr => {
+        const cells = [];
+        tr.querySelectorAll("th").forEach(th => {
+          const text = th.innerText.replace(/\n/g, " ").trim();
+          const colspan = parseInt(th.getAttribute("colspan") || "1");
+          const rowspan = parseInt(th.getAttribute("rowspan") || "1");
+          cells.push({ text, colspan, rowspan });
+        });
+        rows.push(cells);
+      });
+      return rows;
+    }
 
-  pageInfo.textContent = `Halaman ${currentPage} dari ${Math.max(
-    1,
-    Math.ceil(filteredData.length / rowsPerPage)
-  )}`;
+    // Build AOA from headerRows (accounting colspan)
+    function headerRowsToAOA(headerRows) {
+      return headerRows.map(row =>
+        row.flatMap(cell => [cell.text, ...Array(cell.colspan - 1).fill(null)])
+      );
+    }
 
-  // === Hitung total kolom Nilai Perolehan (index 14) ===
-  const totalNilai = filteredData.reduce((sum, row) => {
-    const val = parseFloat((row[14] || "").toString().replace(/[^\d.-]/g, ""));
-    return sum + (isNaN(val) ? 0 : val);
-  }, 0);
+    // Build autotable head from headerRows (objects with rowSpan/colSpan)
+    function buildPdfHead(headerRows) {
+      return headerRows.map(row => row.map(cell => {
+        const obj = { content: cell.text };
+        if (cell.colspan && cell.colspan > 1) obj.colSpan = cell.colspan;
+        if (cell.rowspan && cell.rowspan > 1) obj.rowSpan = cell.rowspan;
+        return obj;
+      }));
+    }
 
-  const totalContainer = document.getElementById("totalContainer");
+    // Auto load Google Sheets
+    window.addEventListener("DOMContentLoaded", async () => {
+      try {
+        const res = await fetch(SHEET_URL);
+        const text = await res.text();
 
-  // Ambil nilai lama (biar animasi dari angka sebelumnya)
-  const oldValue = parseFloat(
-    totalContainer.getAttribute("data-value") || "0"
-  );
+        const rawRows = text.split("\n").map(r => {
+          const cols = r.split(",").map(c => c.trim());
+          return padRow(cols, 23);
+        });
 
-  // Simpan nilai baru ke atribut
-  totalContainer.setAttribute("data-value", totalNilai);
+        allData = rawRows.slice(2).map(r => r.slice(0, 23));
 
-  // Jalankan animasi
-  animateNumber(totalContainer, oldValue, totalNilai, 800);
-}
+        const headersToSkip = ["Kode Barang", "Nama Barang", "Nomor Polisi", "Nomor Rangka", "Nomor BPKB"];
+        allData = allData.filter(r => !(headersToSkip.includes(r[0]) && r[0] !== "") && !(headersToSkip.includes(r[1]) && r[1] !== ""));
+
+        filteredData = [...allData];
+        renderTable();
+      } catch (err) {
+        console.error("Gagal load sheet:", err);
+      }
+    });
+
+    // Export ke Excel
+    document.getElementById("downloadExcel").addEventListener("click", () => {
+      const headerRows = getTableHeadersWithMerge();
+      const aoaHeader = headerRowsToAOA(headerRows);
+      const aoa = [...aoaHeader, ...filteredData.map(r => padRow(r, 23))];
+
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      ws['!merges'] = [];
+      let rowIndex = 0;
+      headerRows.forEach(row => {
+        let colIndex = 0;
+        row.forEach(cell => {
+          if (cell.colspan > 1 || cell.rowspan > 1) {
+            ws['!merges'].push({
+              s: { r: rowIndex, c: colIndex },
+              e: { r: rowIndex + cell.rowspan - 1, c: colIndex + cell.colspan - 1 }
+            });
+          }
+          colIndex += cell.colspan;
+        });
+        rowIndex++;
+      });
+
+      const dataForWidths = aoa;
+      const cols = [];
+      for (let c = 0; c < 23; c++) {
+        let max = 10;
+        dataForWidths.forEach(r => {
+          if (r[c]) {
+            const len = String(r[c]).length;
+            if (len > max) max = len;
+          }
+        });
+        cols.push({ wch: Math.min(50, max + 2) });
+      }
+      ws['!cols'] = cols;
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Data");
+      XLSX.writeFile(wb, "data.xlsx");
+    });
+
+    // Export ke PDF
+    document.getElementById("downloadPDF").addEventListener("click", () => {
+      const { jsPDF } = window.jspdf;
+      const headerRows = getTableHeadersWithMerge();
+      const pdfHead = buildPdfHead(headerRows);
+
+      const doc = new jsPDF("l", "mm", "a4");
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+
+      doc.autoTable({
+        head: pdfHead,
+        body: filteredData.map(r => padRow(r, 23).map((cell, idx) => {
+          if (idx === 13 || idx === 14) return formatRupiah(cell);
+          return cell ?? "";
+        })),
+        startY: 30,
+        styles: { fontSize: 7, cellWidth: "wrap", halign: "center", valign: "middle" },
+        headStyles: { fillColor: [41, 128, 185], halign: "center" },
+        margin: { top: 30, left: 10, right: 10, bottom: 20 },
+        didDrawPage: function (data) {
+          doc.setFontSize(12);
+          doc.setTextColor(40);
+          doc.text("📊 Data Barang - LHI Dinas Pendidikan dan Kebudayaan", pageWidth / 2, 15, { align: "center" });
+
+          const pageCount = doc.internal.getNumberOfPages();
+          const pageCurrent = doc.internal.getCurrentPageInfo().pageNumber;
+          doc.setFontSize(9);
+          doc.text(`Halaman ${pageCurrent} dari ${pageCount}`, pageWidth - 20, pageHeight - 8, { align: "right" });
+        }
+      });
+
+      doc.save("data.pdf");
+    });
+
+    // Dark mode toggle
+    document.getElementById("toggleDark").addEventListener("click", () => {
+      document.documentElement.classList.toggle("dark");
+      document.getElementById("toggleDark").textContent = document.documentElement.classList.contains("dark") ? "☀️" : "🌙";
+    });
+  </script>
+</body>
+</html>
