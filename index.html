@@ -105,10 +105,9 @@
     let currentPage = 1;
     const rowsPerPage = 10;
 
-    // Link CSV dari Google Sheets
+    // CSV Google Sheets
     const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ7sTDwqB-dKMbt6-E6ux3C-_8F48Au-bJJcxqAs8ZiEcf4duOII3G2uE9Y6Psu8xIMkBnvvqMXCkzR/pub?gid=0&single=true&output=csv";
 
-    // Format Rupiah
     const formatRupiah = (value) => {
       if (!isNaN(value) && value !== "") {
         return new Intl.NumberFormat("id-ID", {
@@ -120,20 +119,6 @@
       return value ?? "";
     };
 
-    // Ambil header dari HTML
-    function getTableHeaders() {
-      const headerRows = [];
-      document.querySelectorAll("#dataTable thead tr").forEach(tr => {
-        const cells = [];
-        tr.querySelectorAll("th").forEach(th => {
-          cells.push(th.innerText.replace(/\n/g, " "));
-        });
-        headerRows.push(cells);
-      });
-      return headerRows;
-    }
-
-    // Render isi tabel
     function renderTable() {
       tbody.innerHTML = "";
       const start = (currentPage - 1) * rowsPerPage;
@@ -147,14 +132,11 @@
         row.forEach((cell, index) => {
           const td = document.createElement("td");
           td.className = "border p-2";
-
-          // Kolom N (13) & O (14) → Rupiah
           if (index === 13 || index === 14) {
             td.textContent = formatRupiah(cell);
           } else {
             td.textContent = cell ?? "";
           }
-
           tr.appendChild(td);
         });
 
@@ -185,6 +167,19 @@
       }
     });
 
+    // Ambil header dari HTML
+    function getTableHeaders() {
+      const headerRows = [];
+      document.querySelectorAll("#dataTable thead tr").forEach(tr => {
+        const cells = [];
+        tr.querySelectorAll("th").forEach(th => {
+          cells.push(th.innerText.replace(/\n/g, " "));
+        });
+        headerRows.push(cells);
+      });
+      return headerRows;
+    }
+
     // Auto load Google Sheets
     window.addEventListener("DOMContentLoaded", async () => {
       try {
@@ -192,7 +187,7 @@
         const text = await res.text();
         const rows = text.split("\n").map(r => r.split(",").map(c => c.trim()));
 
-        // Ambil mulai dari baris ke-3 (index 2) sampai T (20 kolom)
+        // Data mulai baris ke-3 (A3:T...)
         allData = rows.slice(2).map(r => r.slice(0, 20));
         filteredData = [...allData];
 
@@ -202,25 +197,12 @@
       }
     });
 
-    // Export ke Excel dengan auto-width
+    // Export ke Excel
     document.getElementById("downloadExcel").addEventListener("click", () => {
       const headerRows = getTableHeaders();
       const ws = XLSX.utils.aoa_to_sheet([...headerRows, ...filteredData]);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Data");
-
-      // Atur lebar kolom otomatis
-      const colWidths = ws['!cols'] = [];
-      const data = [...headerRows, ...filteredData];
-      data[0].forEach((_, i) => {
-        let maxLen = 10;
-        data.forEach(r => {
-          if (r[i]) maxLen = Math.max(maxLen, r[i].toString().length);
-        });
-        colWidths.push({ wch: maxLen + 2 });
-      });
-      ws['!cols'] = colWidths;
-
       XLSX.writeFile(wb, "data.xlsx");
     });
 
