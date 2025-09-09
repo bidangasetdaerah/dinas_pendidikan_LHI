@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <title>Tabel dari Google Sheets + Export</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { darkMode: 'class' }
+  </script>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 min-h-screen p-6 transition-colors duration-300">
+  <div class="max-w-7xl mx-auto bg-white dark:bg-gray-800 shadow-lg rounded-xl p-6">
+    <!-- Header + Dark Mode -->
+    <div class="flex justify-between items-center mb-6">
+      <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100">
+        📊 Data dari Google Sheets
+      </h2>
+      <button id="toggleDark"
+        class="px-3 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 transition">
+        🌙
+      </button>
+    </div>
+
+    <!-- Input Link Spreadsheet -->
+    <div class="flex gap-3 mb-6">
+      <input type="text" id="sheetUrl"
+        placeholder="Tempel link Google Sheet CSV..."
+        class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm
+               focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm
+               bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100" />
+      <button id="loadSheet"
+        class="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition">
+        Load
+      </button>
+    </div>
+
+    <!-- Search -->
+    <div class="flex justify-between items-center mb-3">
+      <input type="text" id="searchBox" placeholder="🔍 Cari data..."
+        class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm
+               focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm
+               bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 w-64" />
+    </div>
+
+    <!-- Tabel -->
+    <div class="overflow-x-auto border rounded-lg shadow-sm">
+      <table id="dataTable" class="min-w-[1500px] w-full text-sm text-center border-collapse">
+        <thead class="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200">
+          <tr>
+            <th colspan="2" class="border p-2">Penggolongan dan Kodefikasi Barang</th>
+            <th rowspan="2" class="border p-2">NIBAR</th>
+            <th rowspan="2" class="border p-2">Nomor Register</th>
+            <th rowspan="2" class="border p-2">Spesifikasi Nama Barang</th>
+            <th rowspan="2" class="border p-2">Spesifikasi Lainnya</th>
+            <th rowspan="2" class="border p-2">Merek/Tipe</th>
+            <th rowspan="2" class="border p-2">Lokasi</th>
+            <th colspan="3" class="border p-2">Kendaraan Dinas*)</th>
+            <th rowspan="2" class="border p-2">Jumlah</th>
+            <th rowspan="2" class="border p-2">Satuan</th>
+            <th rowspan="2" class="border p-2">Harga Satuan Perolehan<br>(Rp.)</th>
+            <th rowspan="2" class="border p-2">Nilai Perolehan<br>(Rp.)</th>
+            <th rowspan="2" class="border p-2">Cara Perolehan</th>
+            <th rowspan="2" class="border p-2">Tanggal Perolehan</th>
+            <th rowspan="2" class="border p-2">Status Penggunaan</th>
+            <th rowspan="2" class="border p-2">Keterangan</th>
+            <th rowspan="2" class="border p-2">Nama Kecamatan</th>
+          </tr>
+          <tr>
+            <th class="border p-2">Kode Barang</th>
+            <th class="border p-2">Nama Barang</th>
+            <th class="border p-2">Nomor Polisi</th>
+            <th class="border p-2">Nomor Rangka</th>
+            <th class="border p-2">Nomor BPKB</th>
+          </tr>
+        </thead>
+        <tbody class="text-gray-800 dark:text-gray-100 text-xs"></tbody>
+      </table>
+    </div>
+
+    <!-- Pagination + Export -->
+    <div class="flex justify-between items-center mt-4 text-sm">
+      <span id="pageInfo" class="text-gray-600 dark:text-gray-300">Halaman 1</span>
+      <div class="flex gap-2">
+        <button id="prevPage"
+          class="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600">
+          ◀️
+        </button>
+        <button id="nextPage"
+          class="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600">
+          ▶️
+        </button>
+        <button id="downloadExcel"
+          class="px-3 py-1 rounded bg-green-600 text-white font-semibold hover:bg-green-700">
+          ⬇️ Excel
+        </button>
+        <button id="downloadPDF"
+          class="px-3 py-1 rounded bg-red-600 text-white font-semibold hover:bg-red-700">
+          ⬇️ PDF
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Export Libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable"></script>
+
+  <script>
+    const tbody = document.querySelector("tbody");
+    const searchBox = document.getElementById("searchBox");
+    const pageInfo = document.getElementById("pageInfo");
+    const prevPageBtn = document.getElementById("prevPage");
+    const nextPageBtn = document.getElementById("nextPage");
+
+    let allData = [];
+    let filteredData = [];
+    let currentPage = 1;
+    const rowsPerPage = 10;
+
+    const formatNumber = (value) => {
+      if (typeof value === "number") return new Intl.NumberFormat("id-ID").format(value);
+      if (!isNaN(value) && value !== "") return new Intl.NumberFormat("id-ID").format(Number(value));
+      return value ?? "";
+    };
+
+    function renderTable() {
+      tbody.innerHTML = "";
+      const start = (currentPage - 1) * rowsPerPage;
+      const end = start + rowsPerPage;
+      const pageData = filteredData.slice(start, end);
+
+      pageData.forEach((row) => {
+        const tr = document.createElement("tr");
+        tr.classList.add("hover:bg-gray-50", "dark:hover:bg-gray-700");
+
+        row.forEach((cell, index) => {
+          const td = document.createElement("td");
+          td.className = "border p-2";
+          td.textContent = (index === 13 || index === 14) ? formatNumber(cell) : (cell ?? "");
+          tr.appendChild(td);
+        });
+
+        tbody.appendChild(tr);
+      });
+
+      pageInfo.textContent = `Halaman ${currentPage} dari ${Math.ceil(filteredData.length / rowsPerPage)}`;
+    }
+
+    function applySearch() {
+      const keyword = searchBox.value.toLowerCase();
+      filteredData = allData.filter(row => row.some(cell => (cell + "").toLowerCase().includes(keyword)));
+      currentPage = 1;
+      renderTable();
+    }
+
+    searchBox.addEventListener("input", applySearch);
+    prevPageBtn.addEventListener("click", () => {
+      if (currentPage > 1) {
+        currentPage--;
+        renderTable();
+      }
+    });
+    nextPageBtn.addEventListener("click", () => {
+      if (currentPage < Math.ceil(filteredData.length / rowsPerPage)) {
+        currentPage++;
+        renderTable();
+      }
+    });
+
+    // Load data dari Google Sheets CSV
+    document.getElementById("loadSheet").addEventListener("click", async () => {
+      const url = document.getElementById("sheetUrl").value.trim();
+      if (!url) return alert("Masukkan link Google Sheet (CSV)");
+
+      try {
+        const res = await fetch(url);
+        const text = await res.text();
+        const rows = text.split("\n").map(r => r.split(",").map(c => c.trim()));
+
+        allData = rows.slice(1); // skip header
+        filteredData = [...allData];
+        currentPage = 1;
+        renderTable();
+      } catch (err) {
+        alert("Gagal memuat data. Pastikan link benar (CSV).");
+      }
+    });
+
+    // Export ke Excel
+    document.getElementById("downloadExcel").addEventListener("click", () => {
+      const ws = XLSX.utils.aoa_to_sheet([[
+        "Kode Barang","Nama Barang","NIBAR","Nomor Register","Spesifikasi Nama Barang","Spesifikasi Lainnya","Merek/Tipe","Lokasi","Nomor Polisi","Nomor Rangka","Nomor BPKB","Jumlah","Satuan","Harga Satuan Perolehan (Rp.)","Nilai Perolehan (Rp.)","Cara Perolehan","Tanggal Perolehan","Status Penggunaan","Keterangan","Nama Kecamatan"
+      ], ...filteredData]);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Data");
+      XLSX.writeFile(wb, "data.xlsx");
+    });
+
+    // Export ke PDF
+    document.getElementById("downloadPDF").addEventListener("click", () => {
+      const doc = new jsPDF('l', 'mm', 'a4');
+      doc.text("Data Barang", 14, 10);
+      doc.autoTable({
+        head: [[
+          "Kode Barang","Nama Barang","NIBAR","Nomor Register","Spesifikasi Nama Barang","Spesifikasi Lainnya","Merek/Tipe","Lokasi","Nomor Polisi","Nomor Rangka","Nomor BPKB","Jumlah","Satuan","Harga Satuan","Nilai Perolehan","Cara Perolehan","Tanggal Perolehan","Status Penggunaan","Keterangan","Nama Kecamatan"
+        ]],
+        body: filteredData,
+        startY: 15,
+        styles: { fontSize: 7 },
+        headStyles: { fillColor: [41, 128, 185] }
+      });
+      doc.save("data.pdf");
+    });
+
+    // Dark mode toggle
+    document.getElementById("toggleDark").addEventListener("click", () => {
+      document.documentElement.classList.toggle("dark");
+      document.getElementById("toggleDark").textContent =
+        document.documentElement.classList.contains("dark") ? "☀️" : "🌙";
+    });
+  </script>
+</body>
+</html>
