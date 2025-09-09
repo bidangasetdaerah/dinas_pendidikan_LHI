@@ -1,24 +1,21 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="utf-8">
+  <meta charset="utf-8" />
   <title>LAPORAN LHI DINAS PENDIDIKAN DAN KEBUDAYAAN</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = { darkMode: 'class' }
-  </script>
+  <script>tailwind.config = { darkMode: 'class' }</script>
+  <style>
+    /* sticky header sederhana */
+    #dataTable thead th { position: sticky; top: 0; z-index: 2; }
+  </style>
 </head>
 <body class="bg-gray-50 dark:bg-gray-900 min-h-screen p-6 transition-colors duration-300">
   <div class="max-w-7xl mx-auto bg-white dark:bg-gray-800 shadow-lg rounded-xl p-6">
     <!-- Header + Dark Mode -->
     <div class="flex justify-between items-center mb-6">
-      <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100">
-        📊 Data LHI Peralatan Dan Mesin
-      </h2>
-      <button id="toggleDark"
-        class="px-3 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 transition">
-        🌙
-      </button>
+      <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100">📊 Data LHI Peralatan Dan Mesin</h2>
+      <button id="toggleDark" class="px-3 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 transition">🌙</button>
     </div>
 
     <!-- Search -->
@@ -52,6 +49,8 @@
             <th rowspan="2" class="border p-2">Keterangan</th>
             <th rowspan="2" class="border p-2">Nama Kecamatan</th>
             <th rowspan="2" class="border p-2">Konfirmasi Keberadaan</th>
+            <th rowspan="2" class="border p-2">Kondisi Sebelumnya</th>
+            <th rowspan="2" class="border p-2">Kondisi Saat Ini</th>
           </tr>
           <tr>
             <th class="border p-2">Kode Barang</th>
@@ -69,33 +68,21 @@
     <div class="flex justify-between items-center mt-4 text-sm">
       <span id="pageInfo" class="text-gray-600 dark:text-gray-300">Halaman 1</span>
       <div class="flex gap-2">
-        <button id="prevPage"
-          class="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600">
-          ◀️
-        </button>
-        <button id="nextPage"
-          class="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600">
-          ▶️
-        </button>
-        <button id="downloadExcel"
-          class="px-3 py-1 rounded bg-green-600 text-white font-semibold hover:bg-green-700">
-          ⬇️ Excel
-        </button>
-        <button id="downloadPDF"
-          class="px-3 py-1 rounded bg-red-600 text-white font-semibold hover:bg-red-700">
-          ⬇️ PDF
-        </button>
+        <button id="prevPage" class="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600">◀️</button>
+        <button id="nextPage" class="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600">▶️</button>
+        <button id="downloadExcel" class="px-3 py-1 rounded bg-green-600 text-white font-semibold hover:bg-green-700">⬇️ Excel</button>
+        <button id="downloadPDF" class="px-3 py-1 rounded bg-red-600 text-white font-semibold hover:bg-red-700">⬇️ PDF</button>
       </div>
     </div>
   </div>
 
   <!-- Export Libraries -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspdf"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 
   <script>
-    const tbody = document.querySelector("tbody");
+    const tbody = document.querySelector("#dataTable tbody");
     const searchBox = document.getElementById("searchBox");
     const pageInfo = document.getElementById("pageInfo");
     const prevPageBtn = document.getElementById("prevPage");
@@ -106,20 +93,23 @@
     let currentPage = 1;
     const rowsPerPage = 10;
 
-    // CSV Google Sheets
+    // Ganti dengan link CSV Google Sheets-mu
     const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ7sTDwqB-dKMbt6-E6ux3C-_8F48Au-bJJcxqAs8ZiEcf4duOII3G2uE9Y6Psu8xIMkBnvvqMXCkzR/pub?gid=0&single=true&output=csv";
 
-    // Format rupiah
+    // Format Rupiah
     const formatRupiah = (value) => {
-      if (!isNaN(value) && value !== "") {
-        return new Intl.NumberFormat("id-ID", {
-          style: "currency",
-          currency: "IDR",
-          minimumFractionDigits: 0
-        }).format(Number(value));
-      }
-      return value ?? "";
+      if (value === null || value === undefined) return "";
+      const n = ("" + value).replace(/[^\d.-]/g, "");
+      if (n === "" || isNaN(Number(n))) return value ?? "";
+      return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(Number(n));
     };
+
+    // PAD row to length
+    function padRow(arr, length) {
+      const r = arr.slice();
+      while (r.length < length) r.push("");
+      return r;
+    }
 
     function renderTable() {
       tbody.innerHTML = "";
@@ -131,9 +121,11 @@
         const tr = document.createElement("tr");
         tr.classList.add("hover:bg-gray-50", "dark:hover:bg-gray-700");
 
-        row.forEach((cell, index) => {
+        // Expect row length = 23
+        const full = padRow(row, 23);
+        full.forEach((cell, index) => {
           const td = document.createElement("td");
-          td.className = "border p-2";
+          td.className = "border p-2 align-top";
           if (index === 13 || index === 14) {
             td.textContent = formatRupiah(cell);
           } else {
@@ -145,7 +137,7 @@
         tbody.appendChild(tr);
       });
 
-      pageInfo.textContent = `Halaman ${currentPage} dari ${Math.ceil(filteredData.length / rowsPerPage)}`;
+      pageInfo.textContent = `Halaman ${currentPage} dari ${Math.max(1, Math.ceil(filteredData.length / rowsPerPage))}`;
     }
 
     function applySearch() {
@@ -169,13 +161,13 @@
       }
     });
 
-    // Ambil header dengan colspan/rowspan
+    // Ambil header dengan info merge (colspan/rowspan)
     function getTableHeadersWithMerge() {
       const rows = [];
       document.querySelectorAll("#dataTable thead tr").forEach(tr => {
         const cells = [];
         tr.querySelectorAll("th").forEach(th => {
-          const text = th.innerText.replace(/\n/g, " ");
+          const text = th.innerText.replace(/\n/g, " ").trim();
           const colspan = parseInt(th.getAttribute("colspan") || "1");
           const rowspan = parseInt(th.getAttribute("rowspan") || "1");
           cells.push({ text, colspan, rowspan });
@@ -185,19 +177,43 @@
       return rows;
     }
 
+    // Build AOA from headerRows (accounting colspan)
+    function headerRowsToAOA(headerRows) {
+      return headerRows.map(row =>
+        row.flatMap(cell => [cell.text, ...Array(cell.colspan - 1).fill(null)])
+      );
+    }
+
+    // Build autotable head from headerRows (objects with rowSpan/colSpan)
+    function buildPdfHead(headerRows) {
+      return headerRows.map(row => row.map(cell => {
+        const obj = { content: cell.text };
+        if (cell.colspan && cell.colspan > 1) obj.colSpan = cell.colspan;
+        if (cell.rowspan && cell.rowspan > 1) obj.rowSpan = cell.rowspan;
+        return obj;
+      }));
+    }
+
     // Auto load Google Sheets
     window.addEventListener("DOMContentLoaded", async () => {
       try {
         const res = await fetch(SHEET_URL);
         const text = await res.text();
-        const rows = text.split("\n").map(r => r.split(",").map(c => c.trim()));
 
-        // Ambil data mulai A3:U (baris index 2 ke bawah, total 21 kolom)
-        allData = rows.slice(2).map(r => r.slice(0, 21));
+        // naive CSV -> rows: split lines then split commas
+        // pad rows to 23 columns
+        const rawRows = text.split("\n").map(r => {
+          // split on comma — if your data contains commas, consider CSV parser
+          const cols = r.split(",").map(c => c.trim());
+          return padRow(cols, 23);
+        });
 
-        // Buang baris header duplikat
+        // Data mulai A3:W (index 2 ke bawah)
+        allData = rawRows.slice(2).map(r => r.slice(0, 23));
+
+        // Buang baris header duplikat (jika sheet menyimpan header lagi)
         const headersToSkip = ["Kode Barang", "Nama Barang", "Nomor Polisi", "Nomor Rangka", "Nomor BPKB"];
-        allData = allData.filter(r => !headersToSkip.includes(r[0]) && !headersToSkip.includes(r[1]));
+        allData = allData.filter(r => !(headersToSkip.includes(r[0]) && r[0] !== "") && !(headersToSkip.includes(r[1]) && r[1] !== ""));
 
         filteredData = [...allData];
         renderTable();
@@ -208,17 +224,13 @@
 
     // Export ke Excel (dengan merge)
     document.getElementById("downloadExcel").addEventListener("click", () => {
-      const headerRows = getTableHeadersWithMerge();
-
-      // Konversi ke AOA
-      const aoa = headerRows.map(row =>
-        row.flatMap(cell => [cell.text, ...Array(cell.colspan - 1).fill(null)])
-      );
-      aoa.push(...filteredData);
+      const headerRows = getTableHeadersWithMerge(); // array of rows with {text,colspan,rowspan}
+      const aoaHeader = headerRowsToAOA(headerRows);
+      const aoa = [...aoaHeader, ...filteredData.map(r => padRow(r, 23))];
 
       const ws = XLSX.utils.aoa_to_sheet(aoa);
 
-      // Tambah merge sesuai colspan/rowspan
+      // merges
       ws['!merges'] = [];
       let rowIndex = 0;
       headerRows.forEach(row => {
@@ -235,64 +247,73 @@
         rowIndex++;
       });
 
+      // Optional: auto column width
+      const dataForWidths = aoa;
+      const cols = [];
+      for (let c = 0; c < 23; c++) {
+        let max = 10;
+        dataForWidths.forEach(r => {
+          if (r[c]) {
+            const len = String(r[c]).length;
+            if (len > max) max = len;
+          }
+        });
+        cols.push({ wch: Math.min(50, max + 2) });
+      }
+      ws['!cols'] = cols;
+
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Data");
       XLSX.writeFile(wb, "data.xlsx");
     });
 
-    // Export ke PDF (dengan multi-row header)
+    // Export ke PDF (multi-row header + header/footer + auto-wrap + page number)
     document.getElementById("downloadPDF").addEventListener("click", () => {
       const { jsPDF } = window.jspdf;
-
-      const head = [
-        [
-          { content: "Kode Barang", rowSpan: 2 },
-          { content: "Nama Barang", rowSpan: 2 },
-          { content: "NIBAR", rowSpan: 2 },
-          { content: "Nomor Register", rowSpan: 2 },
-          { content: "Spesifikasi Nama Barang", rowSpan: 2 },
-          { content: "Spesifikasi Lainnya", rowSpan: 2 },
-          { content: "Merek/Tipe", rowSpan: 2 },
-          { content: "Lokasi", rowSpan: 2 },
-          { content: "Kendaraan Dinas*)", colSpan: 3 },
-          { content: "Jumlah", rowSpan: 2 },
-          { content: "Satuan", rowSpan: 2 },
-          { content: "Harga Satuan Perolehan (Rp.)", rowSpan: 2 },
-          { content: "Nilai Perolehan (Rp.)", rowSpan: 2 },
-          { content: "Cara Perolehan", rowSpan: 2 },
-          { content: "Tanggal Perolehan", rowSpan: 2 },
-          { content: "Status Penggunaan", rowSpan: 2 },
-          { content: "Keterangan", rowSpan: 2 },
-          { content: "Nama Kecamatan", rowSpan: 2 },
-          { content: "Konfirmasi Keberadaan", rowSpan: 2 }
-        ],
-        [
-          { content: "Nomor Polisi" },
-          { content: "Nomor Rangka" },
-          { content: "Nomor BPKB" }
-        ]
-      ];
+      const headerRows = getTableHeadersWithMerge();
+      const pdfHead = buildPdfHead(headerRows); // array-of-array objects
 
       const doc = new jsPDF("l", "mm", "a4");
-      doc.setFontSize(12);
-      doc.text("Data Barang", 14, 10);
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
 
+      // autotable will call didDrawPage on every page; we use it for header/footer
       doc.autoTable({
-        head: head,
-        body: filteredData,
-        startY: 20,
-        styles: { fontSize: 7 },
-        headStyles: { fillColor: [41, 128, 185], halign: "center" }
+        head: pdfHead,
+        body: filteredData.map(r => padRow(r, 23).map((cell, idx) => {
+          // put Rupiah values as formatted strings in PDF columns 14 & 15 (index 13,14)
+          if (idx === 13 || idx === 14) return formatRupiah(cell);
+          return cell ?? "";
+        })),
+        startY: 30,
+        styles: { fontSize: 7, cellWidth: "wrap", halign: "center", valign: "middle" },
+        headStyles: { fillColor: [41, 128, 185], halign: "center" },
+        margin: { top: 30, left: 10, right: 10, bottom: 20 },
+        didDrawPage: function (data) {
+          // Header (title)
+          doc.setFontSize(12);
+          doc.setTextColor(40);
+          doc.text("📊 Data Barang - LHI Dinas Pendidikan dan Kebudayaan", pageWidth / 2, 15, { align: "center" });
+
+          // Footer (page number)
+          const pageCount = doc.internal.getNumberOfPages();
+          const pageCurrent = doc.internal.getCurrentPageInfo().pageNumber;
+          doc.setFontSize(9);
+          doc.text(`Halaman ${pageCurrent} dari ${pageCount}`, pageWidth - 20, pageHeight - 8, { align: "right" });
+        },
+        willDrawCell: function (data) {
+          // nothing special here, placeholder if needed
+        }
       });
 
+      // After autoTable finishes, save
       doc.save("data.pdf");
     });
 
     // Dark mode toggle
     document.getElementById("toggleDark").addEventListener("click", () => {
       document.documentElement.classList.toggle("dark");
-      document.getElementById("toggleDark").textContent =
-        document.documentElement.classList.contains("dark") ? "☀️" : "🌙";
+      document.getElementById("toggleDark").textContent = document.documentElement.classList.contains("dark") ? "☀️" : "🌙";
     });
   </script>
 </body>
