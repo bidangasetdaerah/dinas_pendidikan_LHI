@@ -21,19 +21,6 @@
       </button>
     </div>
 
-    <!-- Input Link Spreadsheet -->
-    <div class="flex gap-3 mb-6">
-      <input type="text" id="sheetUrl"
-        placeholder="Tempel link Google Sheet CSV..."
-        class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm
-               focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm
-               bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100" />
-      <button id="loadSheet"
-        class="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition">
-        Load
-      </button>
-    </div>
-
     <!-- Search -->
     <div class="flex justify-between items-center mb-3">
       <input type="text" id="searchBox" placeholder="🔍 Cari data..."
@@ -118,6 +105,9 @@
     let currentPage = 1;
     const rowsPerPage = 10;
 
+    // Ganti dengan link export CSV Google Sheets kamu
+    const SHEET_URL = "https://docs.google.com/spreadsheets/d/ID_SHEET/export?format=csv&gid=0";
+
     const formatNumber = (value) => {
       if (typeof value === "number") return new Intl.NumberFormat("id-ID").format(value);
       if (!isNaN(value) && value !== "") return new Intl.NumberFormat("id-ID").format(Number(value));
@@ -168,22 +158,18 @@
       }
     });
 
-    // Load data dari Google Sheets CSV
-    document.getElementById("loadSheet").addEventListener("click", async () => {
-      const url = document.getElementById("sheetUrl").value.trim();
-      if (!url) return alert("Masukkan link Google Sheet (CSV)");
-
+    // Auto load Google Sheets saat page dibuka
+    window.addEventListener("DOMContentLoaded", async () => {
       try {
-        const res = await fetch(url);
+        const res = await fetch(SHEET_URL);
         const text = await res.text();
         const rows = text.split("\n").map(r => r.split(",").map(c => c.trim()));
 
         allData = rows.slice(1); // skip header
         filteredData = [...allData];
-        currentPage = 1;
         renderTable();
       } catch (err) {
-        alert("Gagal memuat data. Pastikan link benar (CSV).");
+        console.error("Gagal load sheet:", err);
       }
     });
 
