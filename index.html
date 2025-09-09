@@ -108,12 +108,32 @@
     // Ganti dengan link CSV dari Google Sheets (A1:T...)
     const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ7sTDwqB-dKMbt6-E6ux3C-_8F48Au-bJJcxqAs8ZiEcf4duOII3G2uE9Y6Psu8xIMkBnvvqMXCkzR/pub?gid=0&single=true&output=csv";
 
-    const formatNumber = (value) => {
-      if (typeof value === "number") return new Intl.NumberFormat("id-ID").format(value);
-      if (!isNaN(value) && value !== "") return new Intl.NumberFormat("id-ID").format(Number(value));
+    // Format Rupiah
+    const formatRupiah = (value) => {
+      if (!isNaN(value) && value !== "") {
+        return new Intl.NumberFormat("id-ID", {
+          style: "currency",
+          currency: "IDR",
+          minimumFractionDigits: 0
+        }).format(Number(value));
+      }
       return value ?? "";
     };
 
+    // Ambil header dari HTML
+    function getTableHeaders() {
+      const headerRows = [];
+      document.querySelectorAll("#dataTable thead tr").forEach(tr => {
+        const cells = [];
+        tr.querySelectorAll("th").forEach(th => {
+          cells.push(th.innerText.replace(/\n/g, " "));
+        });
+        headerRows.push(cells);
+      });
+      return headerRows;
+    }
+
+    // Render isi tabel
     function renderTable() {
       tbody.innerHTML = "";
       const start = (currentPage - 1) * rowsPerPage;
@@ -127,7 +147,13 @@
         row.forEach((cell, index) => {
           const td = document.createElement("td");
           td.className = "border p-2";
-          td.textContent = (index === 13 || index === 14) ? formatNumber(cell) : (cell ?? "");
+
+          if (index === 13 || index === 14) {
+            td.textContent = formatRupiah(cell);
+          } else {
+            td.textContent = cell ?? "";
+          }
+
           tr.appendChild(td);
         });
 
@@ -177,7 +203,8 @@
 
     // Export ke Excel
     document.getElementById("downloadExcel").addEventListener("click", () => {
-      const ws = XLSX.utils.aoa_to_sheet(filteredData);
+      const headerRows = getTableHeaders();
+      const ws = XLSX.utils.aoa_to_sheet([...headerRows, ...filteredData]);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Data");
       XLSX.writeFile(wb, "data.xlsx");
@@ -185,10 +212,11 @@
 
     // Export ke PDF
     document.getElementById("downloadPDF").addEventListener("click", () => {
+      const headerRows = getTableHeaders();
       const doc = new jsPDF('l', 'mm', 'a4');
       doc.text("Data Barang", 14, 10);
       doc.autoTable({
-        head: [[]], // header dibiarkan kosong, karena sudah fix di HTML
+        head: headerRows,
         body: filteredData,
         startY: 15,
         styles: { fontSize: 7 },
