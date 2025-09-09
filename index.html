@@ -76,11 +76,10 @@
 
     let allData = [];
     let filteredData = [];
-    let headers = [];
     let currentPage = 1;
     const rowsPerPage = 10;
 
-    // Ganti dengan link CSV dari Google Sheets
+    // Link CSV Google Sheets
     const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ7sTDwqB-dKMbt6-E6ux3C-_8F48Au-bJJcxqAs8ZiEcf4duOII3G2uE9Y6Psu8xIMkBnvvqMXCkzR/pub?gid=0&single=true&output=csv";
 
     const formatNumber = (value) => {
@@ -89,16 +88,56 @@
       return value ?? "";
     };
 
-    function renderHeader(headers) {
+    // 🔹 Render header dengan merge A+B & I-K
+    function renderHeader(rows) {
       thead.innerHTML = "";
-      const tr = document.createElement("tr");
-      headers.forEach(h => {
-        const th = document.createElement("th");
-        th.className = "border p-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200";
-        th.textContent = h;
-        tr.appendChild(th);
+
+      const top = rows[0].slice(0, 20);
+      const bottom = rows[1].slice(0, 20);
+
+      // Baris pertama
+      const tr1 = document.createElement("tr");
+      top.forEach((h, i) => {
+        if (i === 0) { // Merge A+B
+          const th = document.createElement("th");
+          th.colSpan = 2;
+          th.className = "border p-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200";
+          th.textContent = h;
+          tr1.appendChild(th);
+        } else if (i === 8) { // Merge I-K
+          const th = document.createElement("th");
+          th.colSpan = 3;
+          th.className = "border p-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200";
+          th.textContent = h;
+          tr1.appendChild(th);
+        } else if (i !== 1 && i !== 9 && i !== 10) {
+          const th = document.createElement("th");
+          th.rowSpan = 2;
+          th.className = "border p-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200";
+          th.textContent = h;
+          tr1.appendChild(th);
+        }
       });
-      thead.appendChild(tr);
+
+      // Baris kedua
+      const tr2 = document.createElement("tr");
+      // A+B
+      for (let j = 0; j <= 1; j++) {
+        const th = document.createElement("th");
+        th.className = "border p-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200";
+        th.textContent = bottom[j];
+        tr2.appendChild(th);
+      }
+      // I–K
+      for (let j = 8; j <= 10; j++) {
+        const th = document.createElement("th");
+        th.className = "border p-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200";
+        th.textContent = bottom[j];
+        tr2.appendChild(th);
+      }
+
+      thead.appendChild(tr1);
+      thead.appendChild(tr2);
     }
 
     function renderTable() {
@@ -111,7 +150,7 @@
         const tr = document.createElement("tr");
         tr.classList.add("hover:bg-gray-50", "dark:hover:bg-gray-700");
 
-        row.forEach((cell, index) => {
+        row.slice(0, 20).forEach((cell, index) => {
           const td = document.createElement("td");
           td.className = "border p-2";
           td.textContent = (index === 13 || index === 14) ? formatNumber(cell) : (cell ?? "");
@@ -145,21 +184,20 @@
       }
     });
 
-    // Auto load Google Sheets saat page dibuka
+    // Auto load Google Sheets
     window.addEventListener("DOMContentLoaded", async () => {
       try {
         const res = await fetch(SHEET_URL);
         const text = await res.text();
         const rows = text.split("\n").map(r => r.split(",").map(c => c.trim()));
 
-        // Header otomatis dari baris kedua (A2:T2)
-        headers = rows[1].slice(0, 20);
+        // Render header dari A1:T1 + A2:T2
+        renderHeader([rows[0], rows[1]]);
 
         // Data mulai baris ketiga (A3:T...)
         allData = rows.slice(2).map(r => r.slice(0, 20));
         filteredData = [...allData];
 
-        renderHeader(headers);
         renderTable();
       } catch (err) {
         console.error("Gagal load sheet:", err);
@@ -168,7 +206,7 @@
 
     // Export ke Excel
     document.getElementById("downloadExcel").addEventListener("click", () => {
-      const ws = XLSX.utils.aoa_to_sheet([headers, ...filteredData]);
+      const ws = XLSX.utils.aoa_to_sheet(allData);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Data");
       XLSX.writeFile(wb, "data.xlsx");
@@ -179,7 +217,7 @@
       const doc = new jsPDF('l', 'mm', 'a4');
       doc.text("Data Barang", 14, 10);
       doc.autoTable({
-        head: [headers],
+        head: [rows[1].slice(0, 20)], // pake baris kedua biar rapih
         body: filteredData,
         startY: 15,
         styles: { fontSize: 7 },
