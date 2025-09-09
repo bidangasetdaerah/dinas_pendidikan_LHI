@@ -51,6 +51,7 @@
             <th rowspan="2" class="border p-2">Status Penggunaan</th>
             <th rowspan="2" class="border p-2">Keterangan</th>
             <th rowspan="2" class="border p-2">Nama Kecamatan</th>
+            <th rowspan="2" class="border p-2">Konfirmasi Keberadaan</th>
           </tr>
           <tr>
             <th class="border p-2">Kode Barang</th>
@@ -187,7 +188,7 @@
         const text = await res.text();
         const rows = text.split("\n").map(r => r.split(",").map(c => c.trim()));
 
-        // Data mulai baris ke-3 (A3:T...)
+        // Data mulai baris ke-3 (A3:U...)
         allData = rows.slice(2).map(r => r.slice(0, 20));
         filteredData = [...allData];
 
