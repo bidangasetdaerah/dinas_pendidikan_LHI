@@ -32,34 +32,7 @@
     <!-- Tabel -->
     <div class="overflow-x-auto border rounded-lg shadow-sm">
       <table id="dataTable" class="min-w-[1500px] w-full text-sm text-center border-collapse">
-        <thead class="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200">
-          <tr>
-            <th colspan="2" class="border p-2">Penggolongan dan Kodefikasi Barang</th>
-            <th rowspan="2" class="border p-2">NIBAR</th>
-            <th rowspan="2" class="border p-2">Nomor Register</th>
-            <th rowspan="2" class="border p-2">Spesifikasi Nama Barang</th>
-            <th rowspan="2" class="border p-2">Spesifikasi Lainnya</th>
-            <th rowspan="2" class="border p-2">Merek/Tipe</th>
-            <th rowspan="2" class="border p-2">Lokasi</th>
-            <th colspan="3" class="border p-2">Kendaraan Dinas*)</th>
-            <th rowspan="2" class="border p-2">Jumlah</th>
-            <th rowspan="2" class="border p-2">Satuan</th>
-            <th rowspan="2" class="border p-2">Harga Satuan Perolehan<br>(Rp.)</th>
-            <th rowspan="2" class="border p-2">Nilai Perolehan<br>(Rp.)</th>
-            <th rowspan="2" class="border p-2">Cara Perolehan</th>
-            <th rowspan="2" class="border p-2">Tanggal Perolehan</th>
-            <th rowspan="2" class="border p-2">Status Penggunaan</th>
-            <th rowspan="2" class="border p-2">Keterangan</th>
-            <th rowspan="2" class="border p-2">Nama Kecamatan</th>
-          </tr>
-          <tr>
-            <th class="border p-2">Kode Barang</th>
-            <th class="border p-2">Nama Barang</th>
-            <th class="border p-2">Nomor Polisi</th>
-            <th class="border p-2">Nomor Rangka</th>
-            <th class="border p-2">Nomor BPKB</th>
-          </tr>
-        </thead>
+        <thead></thead>
         <tbody class="text-gray-800 dark:text-gray-100 text-xs"></tbody>
       </table>
     </div>
@@ -95,6 +68,7 @@
 
   <script>
     const tbody = document.querySelector("tbody");
+    const thead = document.querySelector("thead");
     const searchBox = document.getElementById("searchBox");
     const pageInfo = document.getElementById("pageInfo");
     const prevPageBtn = document.getElementById("prevPage");
@@ -102,6 +76,7 @@
 
     let allData = [];
     let filteredData = [];
+    let headers = [];
     let currentPage = 1;
     const rowsPerPage = 10;
 
@@ -113,6 +88,18 @@
       if (!isNaN(value) && value !== "") return new Intl.NumberFormat("id-ID").format(Number(value));
       return value ?? "";
     };
+
+    function renderHeader(headers) {
+      thead.innerHTML = "";
+      const tr = document.createElement("tr");
+      headers.forEach(h => {
+        const th = document.createElement("th");
+        th.className = "border p-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200";
+        th.textContent = h;
+        tr.appendChild(th);
+      });
+      thead.appendChild(tr);
+    }
 
     function renderTable() {
       tbody.innerHTML = "";
@@ -165,8 +152,14 @@
         const text = await res.text();
         const rows = text.split("\n").map(r => r.split(",").map(c => c.trim()));
 
-        allData = rows.slice(1); // skip header
+        // Header otomatis dari baris kedua (A2:T2)
+        headers = rows[1].slice(0, 20);
+
+        // Data mulai baris ketiga (A3:T...)
+        allData = rows.slice(2).map(r => r.slice(0, 20));
         filteredData = [...allData];
+
+        renderHeader(headers);
         renderTable();
       } catch (err) {
         console.error("Gagal load sheet:", err);
@@ -175,9 +168,7 @@
 
     // Export ke Excel
     document.getElementById("downloadExcel").addEventListener("click", () => {
-      const ws = XLSX.utils.aoa_to_sheet([[
-        "Kode Barang","Nama Barang","NIBAR","Nomor Register","Spesifikasi Nama Barang","Spesifikasi Lainnya","Merek/Tipe","Lokasi","Nomor Polisi","Nomor Rangka","Nomor BPKB","Jumlah","Satuan","Harga Satuan Perolehan (Rp.)","Nilai Perolehan (Rp.)","Cara Perolehan","Tanggal Perolehan","Status Penggunaan","Keterangan","Nama Kecamatan"
-      ], ...filteredData]);
+      const ws = XLSX.utils.aoa_to_sheet([headers, ...filteredData]);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Data");
       XLSX.writeFile(wb, "data.xlsx");
@@ -188,9 +179,7 @@
       const doc = new jsPDF('l', 'mm', 'a4');
       doc.text("Data Barang", 14, 10);
       doc.autoTable({
-        head: [[
-          "Kode Barang","Nama Barang","NIBAR","Nomor Register","Spesifikasi Nama Barang","Spesifikasi Lainnya","Merek/Tipe","Lokasi","Nomor Polisi","Nomor Rangka","Nomor BPKB","Jumlah","Satuan","Harga Satuan","Nilai Perolehan","Cara Perolehan","Tanggal Perolehan","Status Penggunaan","Keterangan","Nama Kecamatan"
-        ]],
+        head: [headers],
         body: filteredData,
         startY: 15,
         styles: { fontSize: 7 },
